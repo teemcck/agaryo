@@ -5,19 +5,19 @@ using UnityEngine.UI;
 // so a single MenuNavigation instance can persist across all scenes.
 public class EndSceneUIInitializer : MonoBehaviour
 {
-    // Reference to MenuNavigation Singleton
+    // Reference to MenuNavigation Singleton.
     private MenuNavigation menuNavigation;
 
-    // Reference to the buttons
+    // Reference to the buttons.
     public Button returnButton;
     public Button quitButton;
 
     void Start()
     {
-        // Get the instance of MenuNavigation
+        // Get the instance of MenuNavigation.
         menuNavigation = MenuNavigation.instance;
 
-        // Check if the instance is available and assign button listeners
+        // Check if the instance is available and assign button listeners.
         if (menuNavigation != null)
         {
             if (returnButton != null)

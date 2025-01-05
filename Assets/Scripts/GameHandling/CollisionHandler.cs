@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class CollisionHandler : MonoBehaviour
 {
-    public PlayerController player;
+    private PlayerController player;
 
     void OnEnable()
     {
@@ -33,6 +33,7 @@ public class CollisionHandler : MonoBehaviour
         }
     }
 
+    // Compares player & enemy sizes and decides how game should proceed.
     private int HandlePlayerCollision(Collider2D playerCollider, Collider2D enemyCollider)
     {
         // Retrieve the player controller.
@@ -42,7 +43,7 @@ public class CollisionHandler : MonoBehaviour
         int enemySize = 0;
         string enemyType = "";
 
-        // Check the tag of the enemy and get its script accordingly.
+        // Check the tag of the enemy and get its instance accordingly.
         if (enemyCollider.CompareTag("WanderingEnemy"))
         {
             WanderingEnemy wanderingEnemy = enemyCollider.GetComponent<WanderingEnemy>();
@@ -70,10 +71,10 @@ public class CollisionHandler : MonoBehaviour
             // Compare player size with enemy size.
             if (playerSize >= enemySize)
             {
-                // Player is bigger, destroy the enemy.
+                // Player is bigger, consume the enemy.
                 Destroy(enemyCollider.gameObject);
-                playerSize += enemySize; // Increase player size.
-                return playerSize; // Player size has been increased, return new size.
+                playerSize += enemySize;
+                return playerSize; // Return new size.
             }
             else
             {
@@ -85,7 +86,7 @@ public class CollisionHandler : MonoBehaviour
         {
             // If it's neither a WanderingEnemy nor a StationaryEnemy.
             Debug.Log("Debug: Collided with an unknown enemy type.");
-            return playerSize; // Invalid collision, return no size increase.
+            return playerSize; // Invalid collision, return no size change.
         }
     }
 }

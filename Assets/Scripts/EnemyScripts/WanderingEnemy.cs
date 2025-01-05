@@ -28,10 +28,6 @@ public class WanderingEnemy : MonoBehaviour
     [Tooltip("Speed of the enemy's movement.")]
     [SerializeField] private float enemySpeed;
 
-    [Header("Boundary Padding")]
-    [Tooltip("Padding to keep enemies away from borders.")]
-    [SerializeField] private float boundaryPadding = 0.5f;
-
     public int enemySize;
     private Vector2 moveDirection;
     private Rigidbody2D enemyRigidBody;
@@ -66,6 +62,7 @@ public class WanderingEnemy : MonoBehaviour
         StartIdle();
     }
 
+    // Each frame, check if enemy should be moving or idle.
     void Update()
     {
         if (isMoving)
@@ -73,6 +70,7 @@ public class WanderingEnemy : MonoBehaviour
             moveTimer -= Time.deltaTime;
             if (moveTimer <= 0)
             {
+                // Send the enemy to idle state.
                 StartIdle();
             }
         }
@@ -81,6 +79,7 @@ public class WanderingEnemy : MonoBehaviour
             idleTimer -= Time.deltaTime;
             if (idleTimer <= 0)
             {
+                // Send the enemy to moving state.
                 StartMoving();
             }
         }
@@ -105,6 +104,7 @@ public class WanderingEnemy : MonoBehaviour
         }
     }
 
+    // Assign a random move for enemy.
     private void StartMoving()
     {
         isMoving = true;
@@ -112,38 +112,32 @@ public class WanderingEnemy : MonoBehaviour
         moveDirection = Random.insideUnitCircle.normalized;
     }
 
+    // Assign a random idle duration for enemy.
     private void StartIdle()
     {
         isMoving = false;
         idleTimer = Random.Range(minIdleDuration, maxIdleDuration);
     }
 
+    // Calculates the boundary limits of the playable area.
     private void CalculateBoundaryLimits()
     {
-        // Find all objects tagged as "Border"
         GameObject[] borders = GameObject.FindGameObjectsWithTag("Border");
 
         if (borders.Length > 0)
         {
-            // Initialize boundary limits to extremes
             boundaryMin = new Vector2(float.MaxValue, float.MaxValue);
             boundaryMax = new Vector2(float.MinValue, float.MinValue);
 
-            // Iterate through each border to calculate the overall bounds
             foreach (GameObject border in borders)
             {
                 Collider2D borderCollider = border.GetComponent<Collider2D>();
                 if (borderCollider != null)
                 {
-                    // Update min and max bounds based on the collider's bounds
                     boundaryMin = Vector2.Min(boundaryMin, borderCollider.bounds.min);
                     boundaryMax = Vector2.Max(boundaryMax, borderCollider.bounds.max);
                 }
             }
-
-            // Apply padding to the boundaries
-            boundaryMin += Vector2.one * boundaryPadding;
-            boundaryMax -= Vector2.one * boundaryPadding;
         }
         else
         {
@@ -151,9 +145,9 @@ public class WanderingEnemy : MonoBehaviour
         }
     }
 
+    // Trigger the OnEnemyDestroyed event when the enemy is destroyed.
     private void OnDestroy()
     {
-        // Trigger the event when the enemy is destroyed
         OnEnemyDestroyed?.Invoke();
     }
 }

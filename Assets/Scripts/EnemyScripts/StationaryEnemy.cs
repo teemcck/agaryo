@@ -10,7 +10,7 @@ public class StationaryEnemy : MonoBehaviour
 
     void Awake()
     {
-        // Set random color for the enemy
+        // Set random color for the enemy.
         Color randomColor = new Color(Random.value, Random.value, Random.value);
         SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
 

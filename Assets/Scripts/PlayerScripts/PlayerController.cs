@@ -15,69 +15,149 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Stores index of end game scene (available in build settings).")]
     [SerializeField] public int endSceneIndex;
 
+    [Header("Sound Effects")]
+    [Tooltip("Pop sound source played after entity death.")]
+    private AudioSource popSource;
+
     private Rigidbody2D rigidBody;
     private Collider2D playerCollider;
+    private Animator playerAnimator;
     private Vector2 moveDirection;
 
-    private Vector2 boundaryMin; // Minimum boundary limits
-    private Vector2 boundaryMax; // Maximum boundary limits
+    private Vector2 boundaryMin; // Minimum boundary limits.
+    private Vector2 boundaryMax; // Maximum boundary limits.
+    private Camera mainCamera;
 
-    // Define delegate function for collision event.
     public delegate int EnemyCollisionHandler(Collider2D playerCollider, Collider2D enemyCollider);
     public event EnemyCollisionHandler OnPlayerEnemyCollision;
 
+    // Called when the script instance is being loaded.
     void Awake()
     {
-        // Get the Rigidbody2D and Collider2D components from the player.
+        // Initialize player components and calculate boundary limits.
         rigidBody = GetComponent<Rigidbody2D>();
         playerCollider = GetComponent<Collider2D>();
+        playerAnimator = GetComponent<Animator>();
 
-        // Set size of player according to starting player size and the scale increment.
+        popSource = GameObject.Find("PopSource")?.GetComponent<AudioSource>();
+
+        if (popSource == null)
+        {
+            Debug.LogWarning("Pop sound source not found in children.");
+        }
+
+        // Set player localScale.
         transform.localScale = Vector3.one * (playerSize * playerScaleIncrement);
 
-        // Calculate the overall boundaries from all "Border" tagged objects
+        // Set scene camera.
+        mainCamera = Camera.main;
+
+        if (mainCamera != null)
+        {
+            // Adjust camera zoom based on player starting size.
+            AdjustCameraZoom();
+        }
+        else
+        {
+            Debug.LogError("Main Camera not found!");
+        }
+
+        // Find map boundaries to prevent player from exiting map.
         CalculateBoundaryLimits();
     }
 
+    // Called once per frame to handle player input.
     void Update()
     {
-        // Get player input for movement (WASD or arrow keys)
-        float moveX = Input.GetAxisRaw("Horizontal");  // Left/Right (A/D or Arrow keys)
-        float moveY = Input.GetAxisRaw("Vertical");    // Up/Down (W/S or Arrow keys)
+        // Capture movement input from the player.
+        float moveX = Input.GetAxisRaw("Horizontal");
+        float moveY = Input.GetAxisRaw("Vertical");
 
-        moveDirection = new Vector2(moveX, moveY).normalized; // Normalize to prevent faster diagonal movement
+        moveDirection = new Vector2(moveX, moveY).normalized;
     }
 
+    // Called at fixed intervals to handle physics-related updates.
     void FixedUpdate()
     {
-        // Move the player
+        // Move the player based on input and apply boundary limits.
         Vector2 newPosition = rigidBody.position + moveDirection * moveSpeed * Time.fixedDeltaTime;
 
-        // Clamp the new position within the boundary limits
         newPosition.x = Mathf.Clamp(newPosition.x, boundaryMin.x, boundaryMax.x);
         newPosition.y = Mathf.Clamp(newPosition.y, boundaryMin.y, boundaryMax.y);
 
         rigidBody.MovePosition(newPosition);
     }
 
+    // Handles collision with enemy objects.
+    private void OnTriggerEnter2D(Collider2D enemyCollider)
+    {
+        playerSize = (int)OnPlayerEnemyCollision?.Invoke(playerCollider, enemyCollider);
+
+        // playerSize = -1, meaning the player has died.
+        if (playerSize == -1)
+        {
+            MenuNavigation menuNavigation = MenuNavigation.instance;
+            if (menuNavigation != null)
+            {
+                popSource.Play(); // Play a pop sound.
+                menuNavigation.SendToEndScreen(); // Send player to death scene.
+            }
+            else
+            {
+                Debug.LogError("MenuNavigation instance not found!");
+            }
+        }
+        // playerSize >= 100, meaning the player has won.
+        else if (playerSize >= 100)
+        {
+            MenuNavigation menuNavigation = MenuNavigation.instance;
+            if (menuNavigation != null)
+            {
+                menuNavigation.SendToWinScreen(); // Send player to win scene.
+            }
+            else
+            {
+                Debug.LogError("MenuNavigation instance not found!");
+            }
+        }
+        else
+        {
+            // Update player and camera sizing after gaining mass.
+            transform.localScale = Vector3.one * (playerSize * playerScaleIncrement);
+            AdjustCameraZoom();
+
+            // Play keyframed fade to red animation.
+            PlayFadeAnimation();
+
+            // Play pop sound.
+            popSource.Play();
+        }
+    }
+
+    // Adjusts the camera's zoom level based on the player's size.
+    private void AdjustCameraZoom()
+    {
+        if (mainCamera != null)
+        {
+            mainCamera.orthographicSize = Mathf.Max(5f, playerSize * playerScaleIncrement);
+        }
+    }
+
+    // Calculates the boundary limits of the playable area.
     private void CalculateBoundaryLimits()
     {
-        // Find all objects tagged as "Border"
         GameObject[] borders = GameObject.FindGameObjectsWithTag("Border");
 
         if (borders.Length > 0)
         {
-            // Initialize boundary limits to extremes
             boundaryMin = new Vector2(float.MaxValue, float.MaxValue);
             boundaryMax = new Vector2(float.MinValue, float.MinValue);
 
-            // Iterate through each border to calculate the overall bounds
             foreach (GameObject border in borders)
             {
                 Collider2D borderCollider = border.GetComponent<Collider2D>();
                 if (borderCollider != null)
                 {
-                    // Update min and max bounds based on the collider's bounds
                     boundaryMin = Vector2.Min(boundaryMin, borderCollider.bounds.min);
                     boundaryMax = Vector2.Max(boundaryMax, borderCollider.bounds.max);
                 }
@@ -89,30 +169,12 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void OnTriggerEnter2D(Collider2D enemyCollider)
+    // Plays a fade animation when triggered.
+    public void PlayFadeAnimation()
     {
-        // If player collides with enemy, trigger the OnPlayerEnemyCollision event.
-        // The invoked function returns the new size of the player, or -1 if the player has died.
-        playerSize = (int)OnPlayerEnemyCollision?.Invoke(playerCollider, enemyCollider);
-
-        // Update new player size.
-        if (playerSize == -1)
+        if (playerAnimator != null)
         {
-            // The player has died, switch to game over scene.
-            MenuNavigation menuNavigation = MenuNavigation.instance; // Access the MenuNavigation instance.
-            if (menuNavigation != null)
-            {
-                menuNavigation.SendToEndScreen(); // Call SendToEndScreen on the instance
-            }
-            else
-            {
-                Debug.LogError("MenuNavigation instance not found!");
-            }
-        }
-        else
-        {
-            // Set size of player according to new playerSize.
-            transform.localScale = Vector3.one * (playerSize * playerScaleIncrement);
+            playerAnimator.SetTrigger("FadeTrigger");
         }
     }
 }
